@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sensor Data Line Graph</title>
+  <link rel="shortcut icon" href="image.png" type="image/jpg/jpeg">
+  <link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+
+    <div class="content">
+        <h1>GRAPH</h1>
+        <h1>GRAPH</h1>
+    </div>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+  <canvas class="chart" id="sensorChart" width="700" height="200"></canvas>
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <i class='bx bxs-leaf'></i>
+      <h2>Algae Monitoring Website</h2>
+    </div>
+    <ul class="sidebar-links">
+      <h4>
+        <span>Main Menu</span>
+        <div class="separator"></div>
+      </h4>
+      <li>
+        <a href="main.html" class="location">
+          <i class='bx bx-line-chart'></i> Dashboard</a>
+      </li>
+      <br>
+      <li>
+        <a href="overview.html">
+          <i class='bx bxs-home-alt-2'></i>Overview</a>
+      </li>
+      <h4>
+        <span>About</span>
+        <div class="separator"></div>
+      </h4>
+      <li>
+        <a href="project.html"> <i class='bx bxs-notepad' ></i> The Project</a>
+      </li>
+      <br>
+      <li>
+        <a href="researchers.html"> <i class='bx bxs-user-badge'></i> The Researchers </a>
+      </li>
+    </ul>
+  </aside>
+  <br>  
+  <div class="button-container">
+    <a href="download.php" class="download-button">Download as Excel</a>
+    </div>
+  
+  <script>
+   let sensorChart; // Store chart instance globally
+
+async function fetchData() {
+    try {
+        const response = await fetch('fetch_data.php');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Fetched data:', data);  // Log fetched data
+
+        const labels = data.map(item => item.time);  // Ensure 'time' matches your data field
+        const brightnessData = data.map(item => item.brightness / 100);  // Scaling value for brightness
+        const temperatureData = data.map(item => item.temperature / 10);  // Scaling value for temperature
+        const tdsData = data.map(item => item.tds / 100);  // Scaling value for TDS
+        const phData = data.map(item => item.pH);  // Scaling value for pH
+
+        return { labels, brightnessData, temperatureData, tdsData, phData };
+    } catch (error) {
+        console.error('Error fetching data:', error);
+        return { labels: [], brightnessData: [], temperatureData: [], tdsData: [], phData: [] };
+    }
+}
+
+async function updateChart() {
+    const { labels, brightnessData, temperatureData, tdsData, phData } = await fetchData();
+
+    if (sensorChart) {
+        // Update the chart data
+        sensorChart.data.labels = labels;
+        sensorChart.data.datasets[0].data = brightnessData;
+        sensorChart.data.datasets[1].data = temperatureData;
+        sensorChart.data.datasets[2].data = tdsData;
+        sensorChart.data.datasets[3].data = phData;  // Update pH data
+        sensorChart.update();  // Update the chart
+    } else {
+        // Create a new chart instance
+        const ctx = document.getElementById('sensorChart').getContext('2d');
+        sensorChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Turbidity (Scaled Value)',
+                        data: brightnessData,
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        fill: false
+                    },
+                    {
+                        label: 'Temperature (Scaled Value)',
+                        data: temperatureData,
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        fill: false
+                    },
+                    {
+                        label: 'Total Dissolved Solids (Scaled Value)',
+                        data: tdsData,
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        fill: false
+                    },
+                    {
+                        label: 'pH',
+                        data: phData,
+                        borderColor: 'rgba(153, 102, 255, 1)',
+                        backgroundColor: 'rgba(153, 102, 255, 0.2)',
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Values'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            generateLabels: function(chart) {
+                                return chart.data.datasets.map(function(dataset, i) {
+                                    return {
+                                        text: dataset.label.replace(' (Scaled Value)', ''),
+                                        fillStyle: dataset.borderColor,
+                                        hidden: !chart.isDatasetVisible(i),
+                                        datasetIndex: i
+                                    };
+                                });
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y.toFixed(2);
+                                }
+                                return label;
+                            },
+                            afterLabel: function(context) {
+                                let additionalInfo = '';
+                                switch(context.dataset.label) {
+                                    case 'Turbidity (Scaled Value)':
+                                        additionalInfo = 'Real Value: ' + (context.parsed.y * 10).toFixed(1) + ' ntu';
+                                        break;
+                                    case 'Temperature (Scaled Value)':
+                                        additionalInfo = 'Real Value: ' + (context.parsed.y * 10).toFixed(1) + ' °C';
+                                        break;
+                                    case 'Total Dissolved Solids (Scaled Value)':
+                                        additionalInfo = 'Real Value: ' + (context.parsed.y * 100).toFixed(1) + ' ppm';
+                                        break;
+                                }
+                                return additionalInfo;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Initial chart rendering
+updateChart();
+
+// Set up periodic updates (e.g., every 5 seconds)
+setInterval(updateChart, 5000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<?php
+  session_start();  // Start the session at the beginning
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Algal Bloom Monitoring</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body style="background-image: url('algae.png');">
+  <div class="container">
+    <div class="box form-box">
+      <?php
+        include("config.php");
+
+        if (isset($_POST['submit'])) {
+          $username = mysqli_real_escape_string($con, $_POST['username']);
+          $password = mysqli_real_escape_string($con, $_POST['pass']);
+
+          // Prepare the SQL query to prevent SQL injection
+          $stmt = mysqli_prepare($con, "SELECT * FROM users WHERE Username=?");
+          mysqli_stmt_bind_param($stmt, "s", $username);
+          mysqli_stmt_execute($stmt);
+          $result = mysqli_stmt_get_result($stmt);
+
+          $row = mysqli_fetch_assoc($result);
+
+          if ($row) {
+            if (password_verify($password, $row['Password'])) {
+              $_SESSION['valid'] = $row['Username'];
+              $_SESSION['pass'] = $row['Password'];
+
+              header("Location: chart.html");
+              exit();
+            } else {
+              echo "<div class='message'>
+                      <p>Invalid Password.</p>
+                    </div> <br>";
+              echo "<button class='btn' onclick='history.back()'>Go Back</button>";
+            }
+          } else {
+            echo "<div class='message'>
+                    <p>Invalid Username.</p>
+                  </div><br>";
+            echo "<button class='btn' onclick='history.back()'>Go Back</button>";
+          }
+        } else {
+      ?>
+      <header>Login</header>
+      <form action="" method="post">
+        <div class="field input">
+          <input type="text" name="username" id="username" class="pholder" placeholder="Username" required>
+        </div>
+
+        <div class="field input">
+          <input type="password" name="pass" id="pass" class="pholder" placeholder="Password" required>
+        </div>
+
+        <div class="field">
+          <input type="submit" class="btn" name="submit" value="LOGIN">
+        </div>
+
+        <div class="links">
+          Don't have an account? <a href="register.php"> Sign Up Now!</a>
+        </div>
+      </form>
+    </div>
+    <?php } ?>
+  </div>
+</body>
+</html>
